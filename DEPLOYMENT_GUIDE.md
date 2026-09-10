@@ -882,10 +882,34 @@ PM2 logs:
 
 ---
 
+# Daily Automatic Cleanup
+
+Article Extractor stores extracted article content and downloaded images under `articles/`. The cleanup script removes these runtime files daily to prevent unnecessary disk usage.
+
+## What Gets Cleaned
+
+The cleanup job runs every day at 04:00 server local time and:
+
+- Deletes all contents inside `articles/`, while keeping the `articles/` directory itself.
+- Deletes `*.tmp` files in the project root.
+- Deletes `*.temp` files in the project root.
+- Deletes project-root `*.log` files older than 7 days.
+- Deletes project-root `pm2-*.log` files older than 7 days.
+
+The cleanup script only operates on the paths described above. It does not target `.env`, `.git`, `node_modules`, source code, or deployment files.
+
+> Note: PM2's actual logs are normally stored under `~/.pm2/logs/`. The cleanup script does not clean those PM2 logs.
+
+## Manual Cleanup
+
+Run the cleanup script manually with:
+
+```bash
+bash ~/article-extractor/deploy/cleanup.sh
+
 ## Document maintenance
 
 This document describes the **current deployment architecture**.
 
 Do not copy deployment paths or ports from older versions of this document.
 
-In particular, the previous `website2` / `/opt/website2` / port `4000` deployment instructions are obsolete and should not be used for the current production installation.

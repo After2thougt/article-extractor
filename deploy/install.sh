@@ -28,6 +28,7 @@ PM2_APP_NAME="article-extractor"
 BACKEND_PORT=4001
 DEFAULT_PROXY_URL="http://127.0.0.1:7890"
 ECOSYSTEM_FILE="${PROJECT_DIR}/deploy/ecosystem.config.cjs"
+CLEANUP_SCRIPT="${PROJECT_DIR}/deploy/cleanup.sh"
 
 # ==========================================
 # 1. 安全检查：不能用 root 运行
@@ -225,7 +226,35 @@ else
 fi
 
 # ==========================================
-# 13. 启动/重启 Article Extractor
+# ==========================================
+# 13. 配置每日自动清理
+# ==========================================
+log_step "13. 配置每日自动清理"
+
+if [[ -f "${CLEANUP_SCRIPT}" ]]; then
+    chmod +x "${CLEANUP_SCRIPT}"
+    log_pass "Cleanup script ready: ${CLEANUP_SCRIPT}"
+
+    CLEANUP_CRON="0 4 * * * ${CLEANUP_SCRIPT} >/dev/null 2>&1"
+    CURRENT_CRONTAB="$(crontab -l 2>/dev/null || true)"
+
+    if grep -Fqx "${CLEANUP_CRON}" <<< "${CURRENT_CRONTAB}"; then
+        log_pass "Daily cleanup cron already installed"
+    else
+        {
+            printf "%s
+" "${CURRENT_CRONTAB}"
+            printf "%s
+" "${CLEANUP_CRON}"
+        } | crontab -
+        log_pass "Daily cleanup cron installed: 04:00"
+    fi
+else
+    log_warn "Cleanup script not found: ${CLEANUP_SCRIPT}"
+fi
+
+
+# 14. 启动/重启 Article Extractor
 # ==========================================
 log_step "13. 启动/重启 Article Extractor"
 
@@ -246,7 +275,7 @@ log_pass "PM2 process started/restarted and saved"
 sleep 3
 
 # ==========================================
-# 14. PM2 环境变量验证
+# 15. PM2 环境变量验证
 # ==========================================
 log_step "14. PM2 环境变量验证"
 PM2_ID=$(pm2 list | grep "${PM2_APP_NAME}" | awk '{print $2}')
@@ -264,7 +293,7 @@ else
 fi
 
 # ==========================================
-# 15. Backend 健康检查
+# 16. Backend 健康检查
 # ==========================================
 log_step "15. Backend 健康检查"
 if curl -fsS "http://127.0.0.1:${BACKEND_PORT}/" > /dev/null; then
@@ -277,7 +306,7 @@ else
 fi
 
 # ==========================================
-# 16. 代理实际抓取测试
+# 17. 代理实际抓取测试
 # ==========================================
 log_step "16. 代理实际抓取测试"
 log_info "Testing BBC extraction via proxy..."
@@ -301,7 +330,7 @@ else
 fi
 
 # ==========================================
-# 17. Nginx 检查
+# 18. Nginx 检查
 # ==========================================
 log_step "17. Nginx 检查"
 if sudo nginx -t; then
@@ -312,7 +341,7 @@ else
 fi
 
 # ==========================================
-# 18. 最终检查：其他服务未受影响
+# 19. 最终检查：其他服务未受影响
 # ==========================================
 log_step "18. 验证其他服务未受影响"
 
@@ -332,7 +361,7 @@ else
 fi
 
 # ==========================================
-# 19. 输出部署摘要
+# 20. 输出部署摘要
 # ==========================================
 log_step "部署完成摘要"
 
